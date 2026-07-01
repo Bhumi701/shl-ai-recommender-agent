@@ -12,30 +12,33 @@ def health():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    messages = [{"role": m.role, "content": m.content} for m in request.messages]
-
+    messages = []
+    for m in request.messages:
+        if m.role == "assistant":
+            messages.append({"role": "assistant", "content": m.content})
+        else:
+            messages.append({"role": "user", "content": m.content})
+    
+    # Inject previous recommendations into last assistant message
+    for i, msg in enumerate(request.messages):
+        if msg.role == "assistant" and hasattr(msg, 'recommendations'):
+            pass  # already in content
+    
     if not messages:
         raise HTTPException(status_code=400, detail="messages cannot be empty")
 
-    # Max 8 turns check
     if len(messages) > 8:
         return ChatResponse(
-            reply="This conversation has reached the maximum length. Please start a new session.",
+            reply="This conversation has reached the maximum length.",
             recommendations=[],
             end_of_conversation=True,
         )
 
     result = run_agent(messages)
-
     recommendations = [
-        Recommendation(
-            name=r["name"],
-            url=r["url"],
-            test_type=r["test_type"],
-        )
+        Recommendation(name=r["name"], url=r["url"], test_type=r["test_type"])
         for r in result.get("recommendations", [])
     ]
-
     return ChatResponse(
         reply=result["reply"],
         recommendations=recommendations,
