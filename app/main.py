@@ -15,10 +15,13 @@ def chat(request: ChatRequest):
     if not request.messages:
         raise HTTPException(status_code=400, detail="messages cannot be empty")
 
-    messages = [
-        {"role": m.role, "content": m.content}
-        for m in request.messages
-    ]
+    messages = []
+    for m in request.messages:
+        content = m.content
+        if m.role == "assistant" and m.recommendations:
+            names = ", ".join(r.name for r in m.recommendations)
+            content += f"\n[Previously recommended: {names}]"
+        messages.append({"role": m.role, "content": content})
 
     if len(messages) > 8:
         return ChatResponse(

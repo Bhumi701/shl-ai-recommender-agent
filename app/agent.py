@@ -9,7 +9,10 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """You are an SHL Assessment Recommender. 
 Always reply in valid JSON format.
-If you have catalog matches, give recommendations.
+Only give recommendations when the user is describing a hiring need (a role, skills, or job description) that catalog assessments can address.
+If the user is asking a general/comparison/off-topic question (e.g. "what's the difference between X and Y", salary questions, unrelated topics), answer helpfully in the reply field but keep recommendations empty.
+For questions that ask to compare, define, or explain assessment types (not hire for a role), you MUST return an empty recommendations array even if the catalog context contains matching items — this is a strict rule with no exceptions.
+IMPORTANT: If your reply text mentions or refers to specific assessments, every one of those assessments MUST also appear in the recommendations array with its exact name and URL from the catalog context. Never mention an assessment in the reply without also including it in recommendations, and never include an assessment that isn't in the catalog context provided.
 If no matches or unsure, still give a helpful reply but empty recommendations list."""
 
 def build_catalog_context(query: str) -> str:
@@ -35,7 +38,7 @@ def run_agent(messages: list) -> dict:
         resp = client.chat.completions.create(
             model="llama-3.1-8b-instant",   # <--- Smaller & faster model (rate limit kam hoga)
             messages=groq_messages,
-            temperature=0.2,
+            temperature=0,
             max_tokens=800,
             response_format={"type": "json_object"},
         )
